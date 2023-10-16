@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   createColumnHelper,
   flexRender,
@@ -19,12 +19,14 @@ import {
   TableBody,
   TableCell,
   TableHead,
+  TableSortLabel,
   Typography,
   styled,
 } from '@mui/material';
 import CatgirlExplainer from './CatgirlExplainer';
 import { useCatgirlExplainer } from '../services/catgirl';
 import Coin from './cells/Coin';
+import Percent from './cells/Percent';
 import { useAsync } from '@react-hookz/web';
 
 const columnHelper = createColumnHelper<CurrencyDetail>();
@@ -40,30 +42,37 @@ const columns = [
     header: () => <HeaderCellText>Symbol</HeaderCellText>,
   }),
   columnHelper.accessor('bid', {
+    id: 'bid',
     cell: (info) => <Money>{info.getValue()}</Money>,
     header: () => <HeaderCellText align={'right'}>Bid</HeaderCellText>,
   }),
   columnHelper.accessor('ask', {
+    id: 'ask',
     cell: (info) => <Money>{info.getValue()}</Money>,
     header: () => <HeaderCellText align={'right'}>Ask</HeaderCellText>,
   }),
   columnHelper.accessor('last', {
+    id: 'last',
     cell: (info) => <Money>{info.getValue()}</Money>,
     header: () => <HeaderCellText align={'right'}>Last</HeaderCellText>,
   }),
   columnHelper.accessor('dailyHigh', {
+    id: 'dailyHigh',
     cell: (info) => <Money>{info.getValue()}</Money>,
     header: () => <HeaderCellText align={'right'}>Daily High</HeaderCellText>,
   }),
   columnHelper.accessor('dailyChangePercent', {
-    cell: (info) => <Money>{info.getValue()}</Money>,
+    id: 'dailyChangePercent',
+    cell: (info) => <Percent>{info.getValue()}</Percent>,
     header: () => <HeaderCellText align={'right'}>Change, %</HeaderCellText>,
   }),
   columnHelper.accessor('dailyLow', {
+    id: 'dailyLow',
     cell: (info) => <Money>{info.getValue()}</Money>,
     header: () => <HeaderCellText align={'right'}>Daily Low</HeaderCellText>,
   }),
   columnHelper.accessor('dailyVolume', {
+    id: 'dailyVolume',
     cell: (info) => <Money>{info.getValue()}</Money>,
     header: () => <HeaderCellText align={'right'}>Volume</HeaderCellText>,
   }),
@@ -74,19 +83,44 @@ const CurrencyTable: React.FC = () => {
     getTickers(['BTC', 'ETH', 'XRP', 'LTC']),
   );
 
+  const [ascOrder, setAscOrder] = useState<boolean>(false);
+  const [sortedRows, setSortedRows] = useState<CurrencyDetail[] | undefined>();
+
+  const handleSort = (id: string | undefined) => {
+    const columnIndex = columns.findIndex((col) => col.id === id);
+
+    if (columnIndex >= 0 && result) {
+      const sorted = [...result].sort((a, b) => {
+        const idx = columns[columnIndex].id;
+        const valueA = a[idx as keyof CurrencyDetail];
+        const valueB = b[idx as keyof CurrencyDetail];
+        const res = Number(valueA) - Number(valueB);
+
+        if (ascOrder) {
+          return res;
+        } else {
+          return -res;
+        }
+      });
+
+      setSortedRows(sorted);
+      setAscOrder(!ascOrder);
+    }
+  };
+
   useEffect(() => {
     execute();
   }, []);
 
   const reloadTable = useCallback(() => {
-    alert('I do nothing');
+    execute();
   }, []);
 
   const { isShown: isExplainerShown, toggle: toggleShowExplainer } =
     useCatgirlExplainer();
 
   const table = useReactTable({
-    data: result || [],
+    data: sortedRows || result || [],
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
@@ -103,7 +137,7 @@ const CurrencyTable: React.FC = () => {
       <Box sx={{ mb: 3 }}>
         <Button onClick={reloadTable} variant={'contained'}>
           Reload data
-        </Button>{' '}
+        </Button>
         <Button onClick={toggleShowExplainer}>
           {isExplainerShown ? 'Hide' : 'Show'} Explainer
         </Button>
@@ -120,12 +154,17 @@ const CurrencyTable: React.FC = () => {
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <TableCell key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
+                    <TableSortLabel
+                      onClick={() => handleSort(header.id)}
+                      direction={ascOrder ? 'asc' : 'desc'}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                    </TableSortLabel>
                   </TableCell>
                 ))}
               </TableRow>
