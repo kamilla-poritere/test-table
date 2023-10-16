@@ -25,6 +25,12 @@ export const getTickers = (
       )
       .join(','),
   }).then((data) =>
+    /* 
+      Fix incorrect data shown in the table - daily low undefined as array length 11,
+      but in map func you tried to take from it 12 elements 
+      ([symbol,bid,,ask,,,dailyChangePercent,last,,dailyVolume,dailyHigh,dailyLow]),
+      where dailyLow is the last one and undefined 
+    */
     data.map(
       ([
         symbol,
